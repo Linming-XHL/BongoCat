@@ -90,8 +90,10 @@ bool bongo_cat_preferences_behavior_glyphs_ready(
     const BongoCatPreferences *preferences) {
     if (!preferences || !preferences->app) return false;
     const BongoCatApp *app = preferences->app;
-    for (size_t i = 0; i < app->behaviors.count; ++i) {
-        const char *label = app->behaviors.entries[i].label;
+    const BongoCatBehaviorCatalog *catalog =
+        bongo_cat_preferences_behavior_catalog(preferences);
+    for (size_t i = 0; i < catalog->count; ++i) {
+        const char *label = catalog->entries[i].label;
         if (*label && !bongo_cat_preferences_model_glyphs_ready(preferences, label))
             return false;
     }
@@ -100,6 +102,10 @@ bool bongo_cat_preferences_behavior_glyphs_ready(
         if (*label && !bongo_cat_preferences_model_glyphs_ready(preferences, label))
             return false;
     }
+    for (BongoCatModelShortcutCache *cache = app->model_shortcuts; cache; cache = cache->next)
+        for (BongoCatModelShortcutNode *node = cache->bindings; node; node = node->next)
+            if (node->binding.label[0] &&
+                !bongo_cat_preferences_model_glyphs_ready(preferences, node->binding.label)) return false;
     return true;
 }
 
@@ -135,8 +141,15 @@ void bongo_cat_preferences_model_glyphs(const BongoCatApp *app,
         i < app->settings.behavior_shortcut_count; ++i)
         add_text(ranges, capacity, &used,
             app->settings.behavior_shortcuts[i].label);
+    for (BongoCatModelShortcutCache *cache = app->model_shortcuts; cache; cache = cache->next)
+        for (BongoCatModelShortcutNode *node = cache->bindings; node; node = node->next)
+            add_text(ranges, capacity, &used, node->binding.label);
     if (app->preferences) {
         const BongoCatPreferences *preferences = app->preferences;
+        const BongoCatBehaviorCatalog *catalog =
+            bongo_cat_preferences_behavior_catalog(preferences);
+        for (size_t i = 0; i < catalog->count; ++i)
+            add_text(ranges, capacity, &used, catalog->entries[i].label);
         for (size_t i = 0; i < sizeof(preferences->notices) /
             sizeof(preferences->notices[0]); ++i)
             add_text(ranges, capacity, &used, preferences->notices[i].message);
